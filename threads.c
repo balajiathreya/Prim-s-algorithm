@@ -15,6 +15,7 @@ typedef struct data
 	int* vertices;
 	int** graph;
 	int closest_vertex;
+	int no_of_threads;
 } Data;
 
 typedef struct threadData{
@@ -28,15 +29,21 @@ int min(int a, int b);
 void *updateDistances(void* d);
 
 int main(int argc, char *argv[]){
-	printf("This program computes the minimum spanning tree of a weighted dense graph using serial computation.\n");
-	printf("Enter the number of nodes in the graph\n");
-	int size;
+	printf("This program computes the minimum spanning tree of a weighted dense graph using pthreads.\n");
+	if(argc != 3){
+		printf("Usage: ./threads <no_of_nodes> <no_of_threads>\n");
+		exit(0);
+	}
+	int size = atoi(argv[1]);
+	int no_of_threads = atoi(argv[2]);
+	
 	int **mst;
 	int i,j;
 	Data data;
-	ThreadData threadData[5];
-	scanf("%d",&size);
+	ThreadData threadData[no_of_threads];
+	
 	data.size = size;
+	data.no_of_threads = no_of_threads;
 	data.distances = malloc(size * sizeof(int));
 	data.vertices = malloc(size * sizeof(int));
 	data.selected_vertices = malloc(size * sizeof(int));
@@ -48,14 +55,11 @@ int main(int argc, char *argv[]){
 		mst[i] = (int*) malloc(size*sizeof(int));
 	}
 
-	for(i = 0; i < 5; i++){
+	for(i = 0; i < no_of_threads; i++){
 		threadData[i].data_pointer = &data;
 		threadData[i].thread_id = i;
 	}
 		
-	
-
-	
 	for(i = 0; i < size; i++)
 		for(j = 0; j < size; j++)
 			mst[i][j] = 0;
@@ -111,16 +115,18 @@ int main(int argc, char *argv[]){
 		no_of_selected_vertices++;
 		mst[data.closest_vertex][data.vertices[data.closest_vertex]] = 1;
 		
-		pthread_t threads[5];
+		pthread_t threads[no_of_threads];
 		int rc;
-		long t;
-		for(t=0; t<5; t++){
+		int t;
+		for(t=0; t<no_of_threads; t++){
  			rc = pthread_create(&threads[t], NULL, updateDistances, (void*) &threadData[t]);
 			if (rc){
 				 printf("ERROR; return code from pthread_create() is %d\n", rc);
 			 	exit(-1);
-			}
-		}		
+			}			
+		}
+		for(t=0; t<no_of_threads; t++)
+			pthread_join(threads[t],NULL);
 	}
 
 	int mst_length = 0;
@@ -132,7 +138,7 @@ int main(int argc, char *argv[]){
 			}
 		}		
 	}
-	printf("MST length: %d",mst_length);
+	printf("MST length: %d\n",mst_length);
 }	
 
 int in_array(int selected_vertices[], int size, int ele){
@@ -169,10 +175,10 @@ void *updateDistances(void* d){
 	Data* data = threadData->data_pointer;	
 	int i;
 	int start,end;
-	int offset = data->size/ 5;
+	int offset = data->size/ data->no_of_threads;
 	start = threadData->thread_id * offset;
 	end = (threadData->thread_id + 1) * offset - 1;
-	printf("thread_id: %d; start:%d; end: %d; closest_vertex: %d\n",threadData->thread_id,start,end, closest_vertex);
+	// printf("thread_id: %d; start:%d; end: %d; closest_vertex: %d\n",threadData->thread_id,start,end, closest_vertex);
 	for(i = start; i <= end; i++){
 		if(in_array(data->selected_vertices,data->size,i) == 0){
 			int v = data->closest_vertex;

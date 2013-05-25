@@ -11,9 +11,11 @@ int min(int a, int b);
 
 int main(int argc, char *argv[]){
 	printf("This program computes the minimum spanning tree of a weighted dense graph using serial computation.\n");
-	printf("Enter the number of nodes in the graph\n");
-	int size;
-	scanf("%d",&size);
+	if(argc != 2){
+		printf("Usage: ./serialcode <no_of_nodes>\n");
+		exit(0);
+	}
+	int size = atoi(argv[1]);
 	
 	int selected_vertices[size], distances[size], vertices[size];
 	
@@ -95,7 +97,7 @@ int main(int argc, char *argv[]){
 			}
 		}		
 	}
-	printf("MST length: %d",mst_length);
+	printf("MST length: %d\n",mst_length);
 }	
 
 int in_array(int selected_vertices[], int size, int ele){
