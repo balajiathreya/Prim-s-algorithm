@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <limits.h>
 #include <pthread.h>
+#include <time.h>
+#include <sys/time.h>
+
 #define NUM_THREADS 5;
 
 typedef struct data
@@ -37,10 +40,13 @@ int main(int argc, char *argv[]){
 	int size = atoi(argv[1]);
 	int no_of_threads = atoi(argv[2]);
 	
+
 	int **mst;
 	int i,j;
 	Data data;
 	ThreadData threadData[no_of_threads];
+	pthread_t threads[no_of_threads];	
+	struct timeval start_time, end_time;		
 	
 	data.size = size;
 	data.no_of_threads = no_of_threads;
@@ -56,7 +62,7 @@ int main(int argc, char *argv[]){
 	}
 
 	for(i = 0; i < no_of_threads; i++){
-		threadData[i].data_pointer = &data;
+		threadData[i].data_pointer = (struct Data *)&data;
 		threadData[i].thread_id = i;
 	}
 		
@@ -100,6 +106,7 @@ int main(int argc, char *argv[]){
 	// make sure the selected vertices array is empty
 	for(i = 0; i < size; i++)
 		data.selected_vertices[i] = -1;
+	gettimeofday(&start_time, NULL);
 	// pick a random vertex to begin with
 	int no_of_selected_vertices = 1;
 	int first_vertex = rand() % size;
@@ -109,36 +116,42 @@ int main(int argc, char *argv[]){
 		data.vertices[i] = first_vertex;
 	}
 	
-	while(no_of_selected_vertices != size){
-		data.closest_vertex = closest_vertex(data.distances,data.selected_vertices,size);
+	while(no_of_selected_vertices <= size){
+		int v = closest_vertex(data.distances,data.selected_vertices,size);
+		if(v == -1)
+			break;
+		data.closest_vertex = v;
+		//printf("closest_vertex: %d\n ",data.closest_vertex);
 		data.selected_vertices[no_of_selected_vertices] = data.closest_vertex;
 		no_of_selected_vertices++;
-		mst[data.closest_vertex][data.vertices[data.closest_vertex]] = 1;
-		
-		pthread_t threads[no_of_threads];
+		mst[data.closest_vertex][data.vertices[data.closest_vertex]] = 1;		
+		//printf("no of vertices selected so far:%d\n",no_of_selected_vertices);
 		int rc;
 		int t;
 		for(t=0; t<no_of_threads; t++){
- 			rc = pthread_create(&threads[t], NULL, updateDistances, (void*) &threadData[t]);
+			rc = pthread_create(&threads[t], NULL, updateDistances, (void*) &threadData[t]);
 			if (rc){
 				 printf("ERROR; return code from pthread_create() is %d\n", rc);
 			 	exit(-1);
-			}			
+			}
+			//printf("before join\n");
+			pthread_join(threads[t],NULL);			
+			//printf("after join\n");
 		}
-		for(t=0; t<no_of_threads; t++)
-			pthread_join(threads[t],NULL);
+		//printf("after for loop\n");
 	}
-
+	gettimeofday(&end_time, NULL);
 	int mst_length = 0;
 	for(i = 0; i < size; i++){
 		for(j = 0; j < size; j++){			
 			if(mst[i][j] == 1){
-				printf("length of edge %d-%d is %d\n", i,j,data.graph[i][j]);
+				//printf("length of edge %d-%d is %d\n", i,j,data.graph[i][j]);
 				mst_length += data.graph[i][j];
 			}
 		}		
 	}
 	printf("MST length: %d\n",mst_length);
+	printf("time taken: %ld\n", ((end_time.tv_sec * 1000000 + end_time.tv_usec) - (start_time.tv_sec * 1000000 + start_time.tv_usec)));
 }	
 
 int in_array(int selected_vertices[], int size, int ele){
@@ -156,7 +169,8 @@ int in_array(int selected_vertices[], int size, int ele){
 int min(int a, int b) { return (a < b) ? a : b; }
 
 int closest_vertex(int distances[], int selected_vertices[], int size){
-	int vertex,i;
+	int i;
+	int vertex = -1;
 	int min_distance = INT_MAX;
 	for(i = 0; i < size; i++){
 		if(in_array(selected_vertices,size,i) == 0){
@@ -171,7 +185,7 @@ int closest_vertex(int distances[], int selected_vertices[], int size){
 }
 
 void *updateDistances(void* d){  
-	ThreadData* threadData = (struct ThreadData*)d;
+	ThreadData* threadData = (struct ThreadData *)d;
 	Data* data = threadData->data_pointer;	
 	int i;
 	int start,end;
@@ -188,5 +202,6 @@ void *updateDistances(void* d){
 			}
 		}
 	}
+	//printf("exiting thread %d\n", threadData->thread_id);
 	pthread_exit(NULL);
 }

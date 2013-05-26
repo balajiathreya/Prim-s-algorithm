@@ -4,6 +4,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
+#include <time.h>
+#include <sys/time.h>
 
 int closest_vertex(int distances[], int selected_vertices[], int size);
 int in_array(int selected_vertices[], int size, int ele);
@@ -21,7 +23,7 @@ int main(int argc, char *argv[]){
 	
 	int graph[size][size],mst[size][size];
 	int i,j;
-	
+ 	struct timeval start_time, end_time;	
 	for(i = 0; i < size; i++)
 		for(j = 0; j < size; j++)
 			mst[i][j] = 0;
@@ -62,6 +64,7 @@ int main(int argc, char *argv[]){
 	// make sure the selected vertices array is empty
 	for(i = 0; i < size; i++)
 		selected_vertices[i] = -1;
+	gettimeofday(&start_time, NULL);
 	// pick a random vertex to begin with
 	int no_of_selected_vertices = 1;
 	int first_vertex = rand() % size;
@@ -87,17 +90,18 @@ int main(int argc, char *argv[]){
 			}
 		}		
 	}
-
+	gettimeofday(&end_time, NULL);
 	int mst_length = 0;
 	for(i = 0; i < size; i++){
 		for(j = 0; j < size; j++){			
 			if(mst[i][j] == 1){
-				printf("length of edge %d-%d is %d\n", i,j,graph[i][j]);
+				//printf("length of edge %d-%d is %d\n", i,j,graph[i][j]);
 				mst_length += graph[i][j];
 			}
 		}		
 	}
 	printf("MST length: %d\n",mst_length);
+	printf("time taken: %ld\n", ((end_time.tv_sec * 1000000 + end_time.tv_usec) - (start_time.tv_sec * 1000000 + start_time.tv_usec)));
 }	
 
 int in_array(int selected_vertices[], int size, int ele){
